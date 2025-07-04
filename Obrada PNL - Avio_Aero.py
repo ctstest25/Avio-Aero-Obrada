@@ -33,11 +33,13 @@ if opcija == "✈️ Obrada za Aero":
         elif not re.match(r'^[A-Z0-9]{5,10}$', passport):
             warnings.append("Pasoš neispravan")
 
-        birthday = pd.to_datetime(row.get('Birthday', None), errors='coerce')
+        # ISPRAVKA: Dodan dayfirst=True
+        birthday = pd.to_datetime(row.get('Birthday', None), errors='coerce', dayfirst=True)
         if pd.isna(birthday):
             warnings.append("Datum rođenja neispravan ili nedostaje")
 
-        expiry = pd.to_datetime(row.get('Pass Expire Date', None), errors='coerce')
+        # ISPRAVKA: Dodan dayfirst=True
+        expiry = pd.to_datetime(row.get('Pass Expire Date', None), errors='coerce', dayfirst=True)
         if pd.isna(expiry):
             warnings.append("Datum isteka pasoša neispravan ili nedostaje")
 
@@ -62,11 +64,13 @@ if opcija == "✈️ Obrada za Aero":
         nationality = "BIH" if "Bosnia" in nationality_raw else nationality_raw.upper()
         if not nationality or nationality in ['NAN', '']:
             nationality = "XXX"
-
-        passport_expiry = pd.to_datetime(row.get('Pass Expire Date', None), errors='coerce')
+        
+        # ISPRAVKA: Dodan dayfirst=True
+        passport_expiry = pd.to_datetime(row.get('Pass Expire Date', None), errors='coerce', dayfirst=True)
         passport_expiry_str = passport_expiry.strftime('%d%b%y').upper() if pd.notna(passport_expiry) else "XXMMMXX"
-
-        birthday = pd.to_datetime(row.get('Birthday', None), errors='coerce')
+        
+        # ISPRAVKA: Dodan dayfirst=True
+        birthday = pd.to_datetime(row.get('Birthday', None), errors='coerce', dayfirst=True)
         birthday_str = birthday.strftime('%d%b%y').upper() if pd.notna(birthday) else "XXMMMXX"
 
         lines = []
@@ -162,6 +166,8 @@ elif opcija == "🛫 Obrada za Avio":
             title = str(row["Title"]).strip().upper() if pd.notna(row["Title"]) else "FALI TITULA"
             surname = str(row["Surname"]).strip().upper()
             name = str(row["Name"]).strip().upper()
+            
+            suffix = title # Default to the original title
 
             if title == "MR":
                 suffix = "MR"
@@ -171,12 +177,13 @@ elif opcija == "🛫 Obrada za Avio":
                 suffix = "CHD"
             elif title == "INF":
                 suffix = "INF"
-            else:
-                suffix = title
 
             line = f"1{surname}/{name}{suffix} .L/{res_code}"
+            
+            # Note: The logic for INF/CHD in this part seems a bit different from Aero part.
+            # This part prepends text, rather than changing the whole line format.
             if suffix == "INF":
-                line = f" .R/INFT  {line}"
+                line = f" .R/INFT  {line}" 
             elif suffix == "CHD":
                 line = f" .R/1CHD  {line}"
 
@@ -187,14 +194,16 @@ elif opcija == "🛫 Obrada za Avio":
 
         st.subheader("📄 Generisani .txt sadržaj")
         st.code(final_txt, language="text")
+        
+        # Using the modern st.download_button instead of the deprecated base64 link method
+        date_str = datetime.datetime.now().strftime("%d%m%Y")
+        file_name_avio = f"PNL_Export_{date_str}.txt"
 
-        def get_download_link(text):
-            b64 = base64.b64encode(text.encode()).decode()
-            date = datetime.datetime.now().strftime("%d%m%Y")
-            file_name = f"PNL_Export_{date}.txt"
-            href = f'<a href="data:file/txt;base64,{b64}" download="{file_name}">📥 Preuzmi .txt fajl</a>'
-            return href
-
-        st.markdown(get_download_link(final_txt), unsafe_allow_html=True)
+        st.download_button(
+           label="📥 Preuzmi .txt fajl",
+           data=final_txt,
+           file_name=file_name_avio,
+           mime="text/plain"
+        )
     else:
         st.info("Učitaj .xlsx fajl da započneš obradu.")
