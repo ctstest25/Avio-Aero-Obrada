@@ -146,7 +146,6 @@ if opcija == "✈️ Obrada za Aero":
 # 🛫 AVIO OBRADA (PNL format)
 # --------------------------------------------------
 elif opcija == "🛫 Obrada za Avio":
-    # Ovaj dio koda ostaje nepromijenjen jer ne obrađuje državljanstva
     st.header("🛫 Avio PNL Generator")
     st.markdown("Učitaj .xlsx fajl i generiši PNL .txt fajl za aviokompaniju.")
     uploaded_file = st.file_uploader("📤 Učitaj .xlsx fajl", type=["xlsx"])
@@ -164,22 +163,28 @@ elif opcija == "🛫 Obrada za Avio":
             res_counter = 1
             output_lines = ["PNL", flight_info.strip(), flight_code.strip()]
             for _, row in df_raw.iterrows():
-                res_raw = row["Reservation"] if pd.notna(row["Reservation"]) else "FALI REZERVACIJA"
+                res_raw = row["Reservation"] if pd.notna(row["Reservation"]) else f"FALI REZERVACIJA_{res_counter}"
                 if res_raw not in res_map:
-                    res_map[res_raw] = f"10000{res_counter}"
+                    # Ispravljena logika za formatiranje broja rezervacije
+                    res_map[res_raw] = f"{res_counter:05d}"
                     res_counter += 1
                 res_code = res_map[res_raw]
                 title = str(row["Title"]).strip().upper() if pd.notna(row["Title"]) else "FALI TITULA"
                 surname = str(row["Surname"]).strip().upper()
                 name = str(row["Name"]).strip().upper()
                 suffix = title
-                if title == "MR": suffix = "MR"
-                elif title == "MRS": suffix = "MRS"
-                elif title == "CHD": suffix = "CHD"
-                elif title == "INF": suffix = "INF"
-                line = f"1{surname}/{name}{suffix} .L/{res_code}"
-                if suffix == "INF": line = f" .R/INFT  {line}" 
-                elif suffix == "CHD": line = f" .R/1CHD  {line}"
+                if title in ["MR", "MRS", "CHD", "INF"]:
+                    suffix = title
+                
+                # Kreiranje osnovne linije bez razmaka ispred .L/
+                line = f"1{surname}/{name}{suffix}.L/{res_code}"
+                
+                # Dodavanje prefixa za CHD i INF putnike bez dodatnih razmaka
+                if suffix == "INF": 
+                    line = f".R/INFT {surname}/{name}{suffix} .L/{res_code}"
+                elif suffix == "CHD": 
+                    line = f".R/1CHD {surname}/{name}{suffix} .L/{res_code}"
+
                 output_lines.append(line)
             output_lines.append("ENDPNL")
             final_txt = "\n".join(output_lines)
